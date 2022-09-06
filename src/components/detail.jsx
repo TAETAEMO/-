@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 import {useParams, useNavigate} from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { Editor, Viewer } from '@toast-ui/react-editor';
 import '@toast-ui/editor/dist/toastui-editor.css'
@@ -11,14 +11,24 @@ const Detail = () => {
     const [detail, setDetail] = useState({});
     const [isLoading, setIsLoading] = useState(true);
     let {qid} = useParams();
+    const [askEditor, setAskEditor] = useState("");
+    const [answerList, setAnswerList] =useState([]);
+
+    const handleContentChange = () => {
+        const content = editorRef.current.getInstance().getHTML();
+        setAskEditor(content)
+    }
+    const editorRef = useRef();
 
     useEffect(() => {
         axios.get(`http://localhost:4000/posts/${qid}`).then((res) => {
             setDetail(res.data);
             setIsLoading(false);          
         });
+        axios.get(`http://localhost:4000/posts/${qid}/answer`).then((res) => {
+            setAnswerList(res.data);
+        })
       }, [qid]);
-    //   console.log(detail);
 
     const handleDetailDelete = (did) => {
         if(window.confirm("Delete this post?")) {
@@ -26,6 +36,12 @@ const Detail = () => {
             .then(() => navigate('/'))
         }
     }
+
+    const handleAnswerSubmit = () => {
+        axios
+        .post(`http://localhost:4000/posts/${qid}/answer`, {content: askEditor})
+        .then((res) => setAnswerList([...answerList, res.data]));
+      }
 
 return (
 <>
@@ -48,7 +64,12 @@ return (
     </div>
      )}
     <div>
+        {
+        answerList.map((el) => <div key={el.id}><Viewer initialValue={el.content} /></div>)
+        }
     <Editor 
+        ref={editorRef}
+        onChange={handleContentChange}
         placeholder="내용을 입력해주세요."
         previewStyle="vertical" // 미리보기 스타일 지정
         height="300px" // 에디터 창 높이
@@ -62,6 +83,7 @@ return (
           ['code', 'codeblock']
         ]}
       ></Editor>
+      <button onClick={handleAnswerSubmit}>등록</button>
 
     </div>
     
